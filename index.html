@@ -1,419 +1,304 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>THE RECORD | Investigative Portfolio</title>
-    <!-- React and ReactDOM CDNs -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX transformation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .font-serif {
-            font-family: 'Playfair+Display', serif;
-        }
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Play, 
+  ChevronRight, 
+  ChevronUp,
+  Newspaper, 
+  BookOpen, 
+  X,
+  Youtube,
+  Clock,
+  Sparkles,
+  Send,
+  Loader2,
+  Moon,
+  Sun
+} from 'lucide-react';
 
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #E63946; }
-        
+// --- STREAMING_CHUNK:Configuring the Gemini API... ---
+const apiKey = ""; 
+
+const fetchGemini = async (prompt, systemInstruction = "", useSearch = false) => {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+  const payload = {
+    contents: [{ parts: [{ text: prompt }] }],
+    systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+    tools: useSearch ? [{ google_search: {} }] : undefined,
+  };
+
+  const maxRetries = 3;
+  let delay = 1000;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error('API Error');
+      const data = await response.json();
+      return {
+        text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received.",
+        sources: data.candidates?.[0]?.groundingMetadata?.groundingAttributions?.map(a => ({ 
+          uri: a.web?.uri, 
+          title: a.web?.title 
+        })) || []
+      };
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await new Promise(res => setTimeout(res, delay));
+      delay *= 2;
+    }
+  }
+};
+
+// --- STREAMING_CHUNK:Defining the Curated Video Database... ---
+// Strictly embedding the 15 requested YouTube videos with no extra categories
+const VIDEOS = [
+  { id: 'v1', youtubeId: 'vK4y6C1Uuhw', title: 'Video Report 01', thumbnail: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v2', youtubeId: 'Tmo8geBTARk', title: 'Video Report 02', thumbnail: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v3', youtubeId: 'ilr1GpBzdeU', title: 'Video Report 03', thumbnail: 'https://images.unsplash.com/photo-1545147986-a9d6f2bb03b5?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v4', youtubeId: 'nT9BX9iITz4', title: 'Video Report 04', thumbnail: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v5', youtubeId: 'yFgyEYZjT-U', title: 'Video Report 05', thumbnail: 'https://images.unsplash.com/photo-1496560238219-6093d17402ee?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v6', youtubeId: 'aUy29XHSlkU', title: 'Video Report 06', thumbnail: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v7', youtubeId: '5gIQ8Gyduog', title: 'Video Report 07', thumbnail: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v8', youtubeId: 'uyrhmVSKwxE', title: 'Video Report 08', thumbnail: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v9', youtubeId: 'XGAMgPw3KlU', title: 'Video Report 09', thumbnail: 'https://images.unsplash.com/photo-1542810634-71277d95dcbb?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v10', youtubeId: 'nd_DVx5mQN4', title: 'Video Report 10', thumbnail: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v11', youtubeId: '9547hkXTGHw', title: 'Video Report 11', thumbnail: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v12', youtubeId: 'W0TlYeCY8pM', title: 'Video Report 12', thumbnail: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v13', youtubeId: 'Q9kKu9Kglog', title: 'Video Report 13', thumbnail: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v14', youtubeId: 'tk5KoWUwz6Q', title: 'Video Report 14', thumbnail: 'https://images.unsplash.com/photo-1474487585617-9d7310e541ff?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
+  { id: 'v15', youtubeId: 'beLEmk_FIEM', title: 'Video Report 15', thumbnail: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&q=80&w=800', date: 'May 2026' }
+];
+
+// --- STREAMING_CHUNK:Building the Video Player Modal... ---
+const VideoPlayerModal = ({ video, onClose }) => {
+  if (!video) return null;
+  // Dynamic embedding using the YouTube ID
+  const embedUrl = `https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`;
+
+  return (
+    <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 sm:p-12">
+      <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-6xl aspect-video bg-black shadow-2xl overflow-hidden sm:rounded-3xl border border-white/10 animate-in zoom-in-95 duration-300">
+        <button 
+          onClick={onClose} 
+          className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all"
+        >
+          <X size={24} />
+        </button>
+        <iframe 
+          src={embedUrl}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        ></iframe>
+      </div>
+    </div>
+  );
+};
+
+// --- STREAMING_CHUNK:Initializing the AI Assistant... ---
+const AIResearchAssistant = ({ theme }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [messages, setMessages] = useState([
+    { role: 'ai', text: "Researcher active. I can analyze the provided video list. What is your query?" }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const handleAsk = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    const userMessage = { role: 'user', text: query };
+    setMessages(prev => [...prev, userMessage]);
+    setQuery('');
+    setIsTyping(true);
+
+    try {
+      const result = await fetchGemini(query, "You are a direct data analyzer. Provide concise info on the requested topics.", true);
+      setMessages(prev => [...prev, { role: 'ai', text: result.text, sources: result.sources }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'ai', text: "Connection error." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-24 right-6 z-[110]">
+      {isOpen ? (
+        <div className={`w-80 sm:w-96 h-[500px] rounded-2xl shadow-2xl border flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300 ${
+          theme === 'light' ? 'bg-white border-gray-100' : 'bg-[#0F172A] border-gray-800'
+        }`}>
+          <div className="bg-[#0A192F] p-4 text-white flex justify-between items-center">
+            <span className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">Analysis Desk</span>
+            <button onClick={() => setIsOpen(false)}><X size={20} /></button>
+          </div>
+          <div className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar ${theme === 'light' ? 'bg-gray-50' : 'bg-[#1E293B]'}`}>
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-[#E63946] text-white' : theme === 'light' ? 'bg-white shadow-sm' : 'bg-[#0F172A] border border-gray-700 shadow-xl'}`}>
+                  <p className="whitespace-pre-wrap">{m.text}</p>
+                </div>
+              </div>
+            ))}
+            {isTyping && <div className="animate-pulse p-2 text-xs text-gray-500">Processing...</div>}
+          </div>
+          <form onSubmit={handleAsk} className={`p-4 border-t flex gap-2 ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A]'}`}>
+            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Enter query..." className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 text-sm text-black dark:text-white border-none outline-none" />
+            <button type="submit" className="bg-[#0A192F] text-white p-2 rounded-full"><Send size={18} /></button>
+          </form>
+        </div>
+      ) : (
+        <button onClick={() => setIsOpen(true)} className="bg-[#0A192F] text-white p-4 rounded-full shadow-2xl flex items-center gap-3 hover:scale-105 transition-all">
+          <Sparkles size={20} className="text-red-500" />
+          <span className="font-bold text-sm">Analyze ✨</span>
+        </button>
+      )}
+    </div>
+  );
+};
+
+// --- STREAMING_CHUNK:Implementing Clocks... ---
+const USLiveClocks = () => {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const zones = [
+    { label: 'HST', zone: 'Pacific/Honolulu' }, { label: 'AKT', zone: 'America/Anchorage' },
+    { label: 'PT', zone: 'America/Los_Angeles' }, { label: 'MT', zone: 'America/Denver' },
+    { label: 'CT', zone: 'America/Chicago' }, { label: 'ET', zone: 'America/New_York' },
+  ];
+  return (
+    <div className="bg-[#0A192F] text-white py-2 px-6 flex justify-center items-center flex-wrap gap-x-8 gap-y-1 text-[10px] font-black tracking-[0.2em] uppercase border-b border-white/10">
+      {zones.map(z => (
+        <div key={z.label} className="flex items-center gap-2">
+          <span className="opacity-50">{z.label}</span>
+          <span className="font-mono tabular-nums">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: z.zone })}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const VideoCard = ({ video, theme, onClick }) => (
+  <div className={`group border cursor-pointer hover:shadow-2xl transition-all duration-500 overflow-hidden rounded-xl h-full flex flex-col ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-[#0F172A] border-gray-800'}`} onClick={onClick}>
+    <div className="relative aspect-video overflow-hidden">
+      <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={video.title} />
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <Youtube className="text-red-600" size={48} />
+      </div>
+    </div>
+    <div className="p-5 flex-1 flex flex-col">
+      <h3 className={`font-bold text-lg leading-tight mb-2 uppercase group-hover:text-red-500 transition-colors ${theme === 'dark' ? 'text-white' : 'text-[#0A192F]'}`}>{video.title}</h3>
+      <div className="mt-auto flex justify-between items-center text-[10px] uppercase font-bold opacity-50">
+        <span className="flex items-center gap-1">{video.date}</span>
+      </div>
+    </div>
+  </div>
+);
+
+// --- STREAMING_CHUNK:Rendering Main View... ---
+const ConceptFrontPage = ({ videos, theme, onPlay }) => {
+  return (
+    <div className={`min-h-screen transition-colors duration-500 ${theme === 'light' ? 'bg-white text-[#0A192F]' : 'bg-[#050b14] text-gray-100'}`}>
+      <USLiveClocks />
+      <header className={`py-12 px-6 text-center border-b-4 ${theme === 'light' ? 'border-[#0A192F]' : 'border-red-600'}`}>
+        <h1 className="text-7xl font-black italic uppercase tracking-tighter">THE RECORD</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.5em] opacity-40 mt-2">VIDEO ARCHIVE</p>
+      </header>
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {videos.map(v => (
+            <VideoCard key={v.id} video={v} theme={theme} onClick={() => onPlay(v)} />
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+// --- STREAMING_CHUNK:Rendering Immersive View... ---
+const ConceptImmersive = ({ videos, onPlay }) => (
+  <div className="bg-[#1B4332] text-[#F8F9FA]">
+    <header className="fixed top-0 w-full z-50 p-8 text-2xl font-serif italic mix-blend-difference">Archive Viewer</header>
+    <main>
+      {videos.map((v, i) => (
+        <section key={v.id} className="min-h-screen flex items-center justify-center sticky top-0" style={{ backgroundColor: i % 2 === 0 ? '#1B4332' : '#D9480F' }}>
+          <div className="max-w-6xl w-full px-12 grid lg:grid-cols-2 gap-16 items-center">
+            <div className="order-2 lg:order-1">
+              <div className="text-[10px] font-bold uppercase tracking-[0.4em] opacity-60 mb-2">Item 0{i + 1}</div>
+              <h2 className="text-6xl font-serif italic mb-6 leading-tight">{v.title}</h2>
+              <div className="flex gap-4">
+                <button onClick={() => onPlay(v)} className="px-8 py-4 rounded-full border border-white hover:bg-white hover:text-black transition-all font-bold uppercase text-xs tracking-widest">Watch Video</button>
+              </div>
+            </div>
+            <div className="order-1 lg:order-2 rounded-2xl shadow-3xl overflow-hidden aspect-video relative group cursor-pointer" onClick={() => onPlay(v)}>
+              <img src={v.thumbnail} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                 <Play size={64} className="fill-current" />
+              </div>
+            </div>
+          </div>
+        </section>
+      ))}
+    </main>
+  </div>
+);
+
+// --- STREAMING_CHUNK:Final App Assembly... ---
+export default function App() {
+  const [concept, setConcept] = useState('frontpage');
+  const [theme, setTheme] = useState('light');
+  const [playingVideo, setPlayingVideo] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1200);
+    return () => clearTimeout(t);
+  }, [concept]);
+
+  return (
+    <div className="relative antialiased">
+      <div className="fixed bottom-6 left-6 z-[200] flex gap-2 p-2 bg-white/90 dark:bg-[#0A192F]/90 backdrop-blur shadow-2xl rounded-2xl border border-white/10 items-center">
+        <button onClick={() => setConcept('frontpage')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'frontpage' ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+          <Newspaper size={20} /><span className="text-[8px] font-bold uppercase">Grid</span>
+        </button>
+        <button onClick={() => setConcept('immersive')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'immersive' ? 'bg-[#1B4332] text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+          <BookOpen size={20} /><span className="text-[8px] font-bold uppercase">List</span>
+        </button>
+        <div className="w-px h-8 bg-gray-500/20 mx-2" />
+        <button onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} className="p-3 bg-gray-100 dark:bg-gray-800 rounded-xl">
+          {theme === 'light' ? <Moon size={20} className="text-[#0A192F]" /> : <Sun size={20} className="text-yellow-400" />}
+        </button>
+      </div>
+
+      <AIResearchAssistant theme={theme} />
+      <ChevronUp onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="fixed bottom-[150px] right-6 p-3 bg-red-600 text-white rounded-full cursor-pointer z-[105] shadow-xl hover:scale-110 transition-transform" size={48} />
+      
+      {playingVideo && <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />}
+
+      {loading ? (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-[#0A192F] text-white">
+          <Loader2 className="animate-spin mb-4" size={48} />
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] animate-pulse">Syncing Archive...</p>
+        </div>
+      ) : (
+        concept === 'frontpage' ? 
+          <ConceptFrontPage videos={VIDEOS} theme={theme} onPlay={setPlayingVideo} /> :
+          <ConceptImmersive videos={VIDEOS} onPlay={setPlayingVideo} />
+      )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E63946; border-radius: 10px; }
         html { scroll-behavior: smooth; }
-
-        @keyframes marquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-
-        // --- ICON WRAPPER FOR HTML VERSION ---
-        // Robust Icon component to handle Lucide icon definitions from the global window.lucide object
-        const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
-            const [svg, setSvg] = useState('');
-            
-            useEffect(() => {
-                if (window.lucide && window.lucide.icons) {
-                    const iconDef = window.lucide.icons[name];
-                    if (iconDef && Array.isArray(iconDef)) {
-                        // iconDef is an array of segments: [['tag', {attrs}], ...]
-                        const content = iconDef.map(segment => {
-                            if (!Array.isArray(segment)) return '';
-                            const [tag, attrs] = segment;
-                            const attrString = Object.entries(attrs || {})
-                                .filter(([key]) => key !== 'key') // Lucide uses internal keys we don't need for raw SVG
-                                .map(([k, v]) => `${k}="${v}"`)
-                                .join(' ');
-                            return `<${tag} ${attrString}></${tag}>`;
-                        }).join('');
-                        
-                        const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" class="${className}">${content}</svg>`;
-                        setSvg(svgString);
-                    }
-                }
-            }, [name, size, className, strokeWidth]);
-
-            return <span className="inline-flex items-center justify-center" dangerouslySetInnerHTML={{ __html: svg }} />;
-        };
-
-        // --- GEMINI API CONFIGURATION ---
-        const apiKey = ""; 
-
-        const fetchGemini = async (prompt, systemInstruction = "", useSearch = false) => {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-          
-          const payload = {
-            contents: [{ parts: [{ text: prompt }] }],
-            systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-            tools: useSearch ? [{ google_search: {} }] : undefined,
-          };
-
-          const maxRetries = 5;
-          let delay = 1000;
-
-          for (let i = 0; i < maxRetries; i++) {
-            try {
-              const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-              });
-              if (!response.ok) throw new Error('API Error');
-              const data = await response.json();
-              return {
-                text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received.",
-                sources: data.candidates?.[0]?.groundingMetadata?.groundingAttributions?.map(a => ({ 
-                  uri: a.web?.uri, 
-                  title: a.web?.title 
-                })) || []
-              };
-            } catch (error) {
-              if (i === maxRetries - 1) throw error;
-              await new Promise(res => setTimeout(res, delay));
-              delay *= 2;
-            }
-          }
-        };
-
-        // --- MOCK DATA ---
-        const VIDEOS = [
-          {
-            id: 'v1',
-            title: 'The Hidden Cost of Urban Sprawl',
-            description: 'Investigating how modern infrastructure choices are bankrupting suburban communities and what we can do to fix it.',
-            category: 'Infrastructure',
-            thumbnail: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&q=80&w=800',
-            views: '1.2M',
-            duration: '18:24',
-            date: 'May 3, 2026',
-            featured: true,
-            transcript: [
-              { time: "0:00", text: "We often think of the suburbs as the American Dream, but for city treasurers, they are starting to look like a nightmare." },
-              { time: "1:24", text: "The problem lies in the infrastructure-to-tax-revenue ratio. A single mile of suburban road serves far fewer tax-paying units than a city block." },
-              { time: "4:45", text: "When that road needs to be repaved in 25 years, the property taxes collected from those houses don't even cover 20% of the cost." },
-              { time: "12:10", text: "We visited Lafayette, Indiana, to see how they are trying to reverse decades of sprawl-based planning." }
-            ],
-            researchNotes: `
-# INVESTIGATION NOTES: URBAN SPRAWL
-## Summary
-A 12-month study into the fiscal sustainability of low-density residential development.
-
-## Key Findings
-1. **The Infrastructure Gap:** Every $1.00 of residential tax revenue from low-density areas requires $1.40 in infrastructure maintenance costs.
-2. **Density Paradox:** High-density downtown cores subsidize the infrastructure of the surrounding suburbs in 84% of the cities analyzed.
-3. **Public Debt:** Municipal bond debt for road repairs has increased by 300% since 1995 in sprawl-heavy regions.
-
-## Data Sources
-- Municipal Budget Reports (2010-2025)
-- GIS Mapping Data for Lafayette, IN
-- Economic Impact Studies by Strong Towns
-            `
-          }
-        ];
-
-        const CATEGORIES = ['All', 'Infrastructure'];
-
-        // --- COMPONENTS ---
-
-        const EvidenceHub = ({ video, activeTab, onClose, theme }) => {
-          if (!video) return null;
-          return (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-12">
-              <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-              <div className={`relative w-full max-w-5xl h-[80vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A]'}`}>
-                <div className={`p-6 border-b flex justify-between items-center ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-[#1E293B] border-gray-800'}`}>
-                  <div>
-                    <h3 className={`text-lg font-black uppercase tracking-tight ${theme === 'light' ? 'text-[#0A192F]' : 'text-white'}`}>Evidence Hub: {video.title}</h3>
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Primary Investigative Data</p>
-                  </div>
-                  <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full transition-colors focus:outline-none"><Icon name="X" size={24} className={theme === 'light' ? 'text-gray-900' : 'text-white'} /></button>
-                </div>
-                <div className="flex-1 flex overflow-hidden">
-                  <div className={`w-16 sm:w-24 border-r flex flex-col items-center py-8 gap-8 ${theme === 'light' ? 'bg-gray-50 border-gray-100' : 'bg-[#0F172A] border-gray-800'}`}>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('changeTab', { detail: 'transcript' }))} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'transcript' ? 'text-red-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                      <Icon name="Mic" size={24} /><span className="text-[8px] font-bold uppercase">Transcript</span>
-                    </button>
-                    <button onClick={() => window.dispatchEvent(new CustomEvent('changeTab', { detail: 'notes' }))} className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'notes' ? 'text-red-600' : 'text-gray-400 hover:text-gray-600'}`}>
-                      <Icon name="ClipboardList" size={24} /><span className="text-[8px] font-bold uppercase">Research</span>
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    {activeTab === 'transcript' ? (
-                      <div className="space-y-8 max-w-3xl">
-                        {video.transcript.map((item, idx) => (
-                          <div key={idx} className="flex gap-6"><span className="text-xs font-mono font-bold text-red-600 bg-red-50 px-2 py-1 rounded h-fit shrink-0">{item.time}</span>
-                          <p className={`text-base leading-relaxed ${theme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{item.text}</p></div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={`whitespace-pre-wrap font-serif leading-relaxed text-lg ${theme === 'light' ? 'text-gray-800' : 'text-gray-200'}`}>
-                        {video.researchNotes}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        };
-
-        const AIResearchAssistant = ({ theme }) => {
-          const [isOpen, setIsOpen] = useState(false);
-          const [query, setQuery] = useState('');
-          const [messages, setMessages] = useState([{ role: 'ai', text: "Hello! Ask me anything about urban planning." }]);
-          const [isTyping, setIsTyping] = useState(false);
-          const scrollRef = useRef(null);
-
-          const handleAsk = async (e) => {
-            e.preventDefault();
-            if (!query.trim()) return;
-            setMessages(prev => [...prev, { role: 'user', text: query }]);
-            setQuery('');
-            setIsTyping(true);
-            try {
-              const result = await fetchGemini(query, "Expert urban assistant.", true);
-              setMessages(prev => [...prev, { role: 'ai', text: result.text, sources: result.sources }]);
-            } catch (err) {
-              setMessages(prev => [...prev, { role: 'ai', text: "Error connecting." }]);
-            } finally { setIsTyping(false); }
-          };
-
-          return (
-            <div className="fixed bottom-24 right-6 z-[110]">
-              {isOpen ? (
-                <div className={`w-80 sm:w-96 h-[500px] rounded-2xl shadow-2xl border flex flex-col overflow-hidden ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A] border-gray-800'}`}>
-                  <div className="bg-[#0A192F] p-4 text-white flex justify-between items-center">
-                    <span className="font-bold text-sm uppercase tracking-wider flex items-center gap-2"><Icon name="Sparkles" size={16} /> Research Desk ✨</span>
-                    <button onClick={() => setIsOpen(false)}><Icon name="X" size={20} /></button>
-                  </div>
-                  <div ref={scrollRef} className={`flex-1 overflow-y-auto p-4 space-y-4 ${theme === 'light' ? 'bg-gray-50' : 'bg-[#1E293B]'}`}>
-                    {messages.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-[#E63946] text-white' : theme === 'light' ? 'bg-white shadow-sm' : 'bg-[#0F172A] border border-gray-700'}`}>
-                          <p>{m.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <form onSubmit={handleAsk} className="p-4 flex gap-2"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Ask..." className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm text-black" /><button className="bg-[#0A192F] text-white p-2 rounded-full"><Icon name="Send" size={18} /></button></form>
-                </div>
-              ) : (
-                <button onClick={() => setIsOpen(true)} className="bg-[#0A192F] text-white p-4 rounded-full shadow-2xl flex items-center gap-3 hover:scale-105 transition-transform"><Icon name="Sparkles" /><span className="font-bold text-sm">Ask AI ✨</span></button>
-              )}
-            </div>
-          );
-        };
-
-        const DeepDiveButton = ({ video, theme, onOpenEvidence }) => {
-          const [loading, setLoading] = useState(false);
-          const [analysis, setAnalysis] = useState(null);
-          const getAnalysis = async () => {
-            setLoading(true);
-            try {
-              const result = await fetchGemini(`Analyze investigative angle for: ${video.title}. Summary: ${video.description}`, "Investigative producer.");
-              setAnalysis(result.text);
-            } catch (e) { setAnalysis("Error generating content."); } finally { setLoading(false); }
-          };
-          return (
-            <div className="mt-6 border-t pt-6">
-              <div className="flex gap-6 mb-6">
-                <button onClick={() => onOpenEvidence('transcript')} className="text-[10px] font-black uppercase text-gray-500 hover:text-red-600 flex items-center gap-2 transition-colors"><Icon name="Mic" size={14} /> Transcript</button>
-                <button onClick={() => onOpenEvidence('notes')} className="text-[10px] font-black uppercase text-gray-500 hover:text-red-600 flex items-center gap-2 transition-colors"><Icon name="ClipboardList" size={14} /> Notes</button>
-              </div>
-              {!analysis && !loading && (
-                <button onClick={getAnalysis} className="flex items-center gap-2 text-xs font-black uppercase text-[#0A192F] dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"><Icon name="Sparkles" /> Generate ✨ AI Analysis</button>
-              )}
-              {loading && <div className="text-xs font-bold animate-pulse text-red-500">Generating Analysis...</div>}
-              {analysis && <div className={`p-4 rounded-xl mt-4 text-sm leading-relaxed whitespace-pre-wrap border ${theme === 'light' ? 'bg-gray-50 border-gray-100 text-gray-700' : 'bg-[#1E293B] border-gray-700 text-gray-200'}`}>{analysis}</div>}
-            </div>
-          );
-        };
-
-        const BackToTop = ({ concept }) => {
-          const [visible, setVisible] = useState(false);
-          useEffect(() => {
-            const toggle = () => window.pageYOffset > 400 ? setVisible(true) : setVisible(false);
-            window.addEventListener('scroll', toggle);
-            return () => window.removeEventListener('scroll', toggle);
-          }, []);
-          if (!visible) return null;
-          return (
-            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className={`fixed bottom-[220px] right-6 z-[105] p-3 rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95 ${concept === 'frontpage' ? 'bg-[#E63946] text-white' : 'bg-white text-green-800'}`}>
-              <Icon name="ChevronUp" strokeWidth={3} />
-            </button>
-          );
-        };
-
-        const USLiveClocks = () => {
-          const [time, setTime] = useState(new Date());
-          useEffect(() => {
-            const t = setInterval(() => setTime(new Date()), 1000);
-            return () => clearInterval(t);
-          }, []);
-          const zones = [
-            { label: 'HST', zone: 'Pacific/Honolulu' }, { label: 'AKT', zone: 'America/Anchorage' },
-            { label: 'PT', zone: 'America/Los_Angeles' }, { label: 'MT', zone: 'America/Denver' },
-            { label: 'CT', zone: 'America/Chicago' }, { label: 'ET', zone: 'America/New_York' },
-          ];
-          return (
-            <div className="bg-[#0A192F] text-white py-2 px-6 flex justify-center flex-wrap gap-6 text-[10px] font-black uppercase border-b border-white/10">
-              {zones.map(z => (
-                <div key={z.label} className="flex gap-2">
-                  <span className="opacity-50">{z.label}</span>
-                  <span className="font-mono">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: z.zone })}</span>
-                </div>
-              ))}
-            </div>
-          );
-        };
-
-        const VideoCard = ({ video, theme }) => (
-          <div className={`border group cursor-pointer flex flex-col transition-all hover:shadow-lg ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-[#0F172A] border-gray-800'}`}>
-            <div className="aspect-video relative overflow-hidden">
-              <img src={video.thumbnail} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-              <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] px-1.5 py-0.5">{video.duration}</div>
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                 <Icon name="Play" size={32} className="text-white fill-current opacity-80" />
-              </div>
-            </div>
-            <div className="p-4 flex-1">
-              <h3 className={`font-bold mb-2 uppercase transition-colors group-hover:text-red-600 ${theme === 'light' ? 'text-gray-900' : 'text-white'}`}>{video.title}</h3>
-              <p className="text-sm opacity-60 line-clamp-2">{video.description}</p>
-            </div>
-          </div>
-        );
-
-        const ConceptFrontPage = ({ videos, theme, onOpenEvidence }) => {
-          const featured = videos[0];
-          return (
-            <div className={`min-h-screen ${theme === 'light' ? 'bg-white text-[#0A192F]' : 'bg-[#050b14] text-gray-100'}`}>
-              <USLiveClocks />
-              <header className="py-12 text-center border-b-4 border-[#0A192F] dark:border-red-600">
-                <h1 className="text-6xl font-black italic uppercase tracking-tighter">THE RECORD</h1>
-                <p className="text-xs font-bold uppercase tracking-[0.3em] opacity-60 mt-2">Insight • Impact • Investigation</p>
-              </header>
-              <main className="max-w-7xl mx-auto px-6 py-12">
-                <div className="grid lg:grid-cols-2 gap-12 items-start mb-16">
-                  <div className="aspect-video bg-black relative rounded shadow-2xl overflow-hidden group cursor-pointer">
-                    <img src={featured.thumbnail} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700" />
-                    <div className="absolute inset-0 flex items-center justify-center"><div className="bg-red-600 p-6 rounded-full group-hover:scale-110 transition-transform"><Icon name="Play" size={32} /></div></div>
-                  </div>
-                  <div className="lg:pl-6">
-                    <div className="text-red-600 font-black uppercase text-[10px] tracking-[0.2em] mb-2">Featured Investigation</div>
-                    <h2 className="text-5xl font-black uppercase tracking-tighter leading-tight mb-4">{featured.title}</h2>
-                    <p className="text-lg opacity-80 mb-6 leading-relaxed">{featured.description}</p>
-                    <DeepDiveButton video={featured} theme={theme} onOpenEvidence={onOpenEvidence} />
-                  </div>
-                </div>
-                <div className="grid md:grid-cols-3 gap-8">
-                  {videos.map(v => <VideoCard key={v.id} video={v} theme={theme} />)}
-                </div>
-              </main>
-            </div>
-          );
-        };
-
-        const ConceptImmersive = ({ videos, onOpenEvidence }) => (
-          <div className="bg-[#F8F9FA] text-[#1B4332]">
-            <header className="fixed top-0 w-full z-50 p-8 text-2xl font-serif italic mix-blend-difference text-white">The Storyteller</header>
-            <main>
-              {videos.map((v, i) => (
-                <section key={v.id} className="min-h-screen flex items-center justify-center sticky top-0" style={{ backgroundColor: i % 2 === 0 ? '#1B4332' : '#D9480F', color: '#F8F9FA' }}>
-                  <div className="max-w-6xl w-full px-12 grid lg:grid-cols-2 gap-16 items-center">
-                    <div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.4em] opacity-60 mb-2">Chapter 0{i + 1}</div>
-                      <h2 className="text-6xl font-serif italic mb-6">{v.title}</h2>
-                      <p className="text-lg opacity-90 mb-8 leading-relaxed max-w-md">{v.description}</p>
-                      <div className="flex gap-4">
-                        <button className="px-8 py-4 rounded-full border border-white hover:bg-white hover:text-black transition-all font-bold">Start Reading</button>
-                        <button onClick={() => onOpenEvidence('transcript')} className="p-4 rounded-full border border-white/30 hover:border-white transition-all"><Icon name="ClipboardList" /></button>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl shadow-2xl overflow-hidden aspect-square"><img src={v.thumbnail} className="w-full h-full object-cover transition-transform duration-1000" /></div>
-                  </div>
-                </section>
-              ))}
-            </main>
-          </div>
-        );
-
-        function App() {
-          const [concept, setConcept] = useState('frontpage');
-          const [theme, setTheme] = useState('light');
-          const [evidenceTarget, setEvidenceTarget] = useState(null);
-          const [evidenceTab, setEvidenceTab] = useState('transcript');
-
-          useEffect(() => {
-            const handleTab = e => setEvidenceTab(e.detail);
-            window.addEventListener('changeTab', handleTab);
-            return () => window.removeEventListener('changeTab', handleTab);
-          }, []);
-
-          return (
-            <div className="relative">
-              <div className="fixed bottom-6 left-6 z-[100] flex gap-2 p-2 bg-white/90 backdrop-blur shadow-2xl rounded-2xl border border-gray-100 items-center">
-                <button onClick={() => setConcept('frontpage')} className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${concept === 'frontpage' ? 'bg-[#E63946] text-white scale-110' : 'text-gray-400 hover:bg-gray-50'}`}>
-                  <Icon name="Newspaper" /><span className="text-[8px] font-bold uppercase">Front Page</span>
-                </button>
-                <button onClick={() => setConcept('immersive')} className={`p-3 rounded-xl flex flex-col items-center gap-1 transition-all ${concept === 'immersive' ? 'bg-[#1B4332] text-white scale-110' : 'text-gray-400 hover:bg-gray-50'}`}>
-                  <Icon name="BookOpen" /><span className="text-[8px] font-bold uppercase">Storyteller</span>
-                </button>
-                <div className="w-px h-8 bg-gray-200 mx-1" />
-                <button onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} className="p-3 hover:bg-gray-50 rounded-xl transition-all">
-                  {theme === 'light' ? <Icon name="Moon" /> : <Icon name="Sun" />}
-                </button>
-              </div>
-
-              <BackToTop concept={concept} />
-              <AIResearchAssistant theme={theme} />
-              {evidenceTarget && <EvidenceHub video={evidenceTarget} activeTab={evidenceTab} onClose={() => setEvidenceTarget(null)} theme={theme} />}
-
-              {concept === 'frontpage' ? 
-                <ConceptFrontPage videos={VIDEOS} theme={theme} onOpenEvidence={type => { setEvidenceTarget(VIDEOS[0]); setEvidenceTab(type); }} /> : 
-                <ConceptImmersive videos={VIDEOS} onOpenEvidence={type => { setEvidenceTarget(VIDEOS[0]); setEvidenceTab(type); }} />
-              }
-            </div>
-          );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+      `}} />
+    </div>
+  );
+}
