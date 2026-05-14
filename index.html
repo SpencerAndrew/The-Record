@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>THE RECORD | Archive</title>
-    <!-- React and ReactDOM -->
+    <!-- React and ReactDOM CDNs -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel for JSX transformation -->
@@ -14,17 +14,15 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
         
         body { font-family: 'Inter', sans-serif; transition: background-color 0.5s ease; }
+        .font-serif { font-family: 'Playfair Display', serif; }
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #E63946; border-radius: 10px; }
         html { scroll-behavior: smooth; }
         
-        .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; }
-        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 1rem; }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
     </style>
@@ -35,7 +33,33 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        const apiKey = ""; // Gemini API Key
+        const apiKey = ""; // Gemini API Key placeholder
+
+        const fetchGemini = async (prompt) => {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received.";
+            } catch (err) { return "Connection Error."; }
+        };
+
+        const Icon = ({ name, size = 20, className = "", strokeWidth = 2 }) => {
+            const [svg, setSvg] = useState('');
+            useEffect(() => {
+                if (window.lucide && window.lucide.icons[name]) {
+                    const iconDef = window.lucide.icons[name];
+                    const content = iconDef.map(seg => {
+                        const [tag, attrs] = seg;
+                        const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+                        return `<${tag} ${attrStr}></${tag}>`;
+                    }).join('');
+                    setSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" class="${className}">${content}</svg>`);
+                }
+            }, [name, size, className]);
+            return <span dangerouslySetInnerHTML={{ __html: svg }} className="inline-flex items-center justify-center" />;
+        };
 
         const VIDEOS = [
             { id: "v1", youtubeId: "vK4y6C1Uuhw", title: "Why the rate of single men in the US looking for dates has declined - CNN" },
@@ -44,7 +68,6 @@
             { id: "v4", youtubeId: "nT9BX9iITz4", title: "WARNING To Childless Women - Are You Happier or Miserable With That Decision? - Valuetainment" },
             { id: "v5", youtubeId: "yFgyEYZjT-U", title: "Gen Z's Escapism Has Gone Too Far - Misha Petrov" },
             { id: "v6", youtubeId: "aUy29XHSlkU", title: "Tim Pool: 'High Quality Men' Should SHAME Attractive Women Into Not Being 'Instagram Hoes' - The Hill" },
-            { id: "v7", youtubeId: "5gIQ8Gyduog", title: "Video Report 07 - Societal Analysis" },
             { id: "v8", youtubeId: "uyrhmVSKwxE", title: "REPLIKA - A CyberSexual DISASTER - Upper Echelon" },
             { id: "v9", youtubeId: "XGAMgPw3KlU", title: "MAGA Girl DROPS TRUTH BOMBS About Western Women?! - whatever clips" },
             { id: "v10", youtubeId: "nd_DVx5mQN4", title: "Body Counts Are Rising, Marriage Rates Are Falling - The Comments Section" },
@@ -55,31 +78,92 @@
             { id: "v15", youtubeId: "beLEmk_FIEM", title: "Let's Talk about Touch Starvation (Reddit Review) - HealthyGamerGG" }
         ];
 
-        const Icon = ({ name, size = 20, className = "" }) => {
-            const [svg, setSvg] = useState('');
-            useEffect(() => {
-                if (window.lucide && window.lucide.icons[name]) {
-                    const iconDef = window.lucide.icons[name];
-                    const content = iconDef.map(seg => {
-                        const [tag, attrs] = seg;
-                        const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
-                        return `<${tag} ${attrStr}></${tag}>`;
-                    }).join('');
-                    setSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${className}">${content}</svg>`);
-                }
-            }, [name, size, className]);
-            return <span dangerouslySetInnerHTML={{ __html: svg }} className="inline-flex" />;
-        };
-
-        const fetchGemini = async (prompt) => {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const payload = { contents: [{ parts: [{ text: prompt }] }] };
-            try {
-                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                const data = await response.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
-            } catch (err) { return "Connection Error."; }
-        };
+        const ARTICLES = [
+            { id: "a1", url: "https://mcc.gse.harvard.edu/reports/loneliness-in-america", title: "Loneliness in America", source: "Harvard GSE" },
+            { id: "a2", url: "https://studyfinds.org/lonely-nation-two-thirds-feel-more-alone-than-ever-many-cry-first-time/", title: "Lonely Nation: Two-thirds feel more alone than ever", source: "StudyFinds" },
+            { id: "a3", url: "https://www.forbes.com/sites/bryanrobinson/2023/05/06/us-surgeon-general-cites-loneliness-as-serious-mental-health-hazard-in-new-report/", title: "Surgeon General Cites Loneliness", source: "Forbes" },
+            { id: "a4", url: "https://www.washingtonpost.com/dc-md-va/2022/11/11/yale-suicides-mental-health-withdrawals/", title: "Yale Suicides and Mental Health Withdrawals", source: "Washington Post" },
+            { id: "a5", url: "https://www.forbes.com/sites/tomspiggle/2022/05/16/anxiety-disorders-and-mh-discrimination-in-the-workplace/", title: "Anxiety and MH Discrimination", source: "Forbes" },
+            { id: "a6", url: "https://www.who.int/news/item/02-03-2022-covid-19-pandemic-triggers-25-increase-in-prevalence-of-anxiety-and-depression-worldwide", title: "Pandemic Triggers 25% Increase in Anxiety", source: "WHO" },
+            { id: "a7", url: "https://www.kff.org/medicaid/issue-brief/a-look-at-strategies-to-address-behavioral-health-workforce-shortages-findings-from-a-survey-of-state-medicaid-programs/", title: "Workforce Shortages in Behavioral Health", source: "KFF" },
+            { id: "a8", url: "https://www.nature.com/articles/s41593-020-00742-z", title: "The Neuroscience of Loneliness", source: "Nature" },
+            { id: "a9", url: "https://pubmed.ncbi.nlm.nih.gov/25910392/", title: "Deprivation of Human Touch", source: "PubMed" },
+            { id: "a10", url: "https://www.foxnews.com/us/us-birth-rate-held-steady-2022-below-pre-covid-levels-women-having-babies-older-age-cdc", title: "US Birth Rate Below Pre-COVID Levels", source: "Fox News" },
+            { id: "a11", url: "https://ifstudies.org/blog/counterintuitive-trends-in-the-link-between-premarital-sex-and-marital-stability", title: "Premarital Sex and Marital Stability", source: "IF Studies" },
+            { id: "a12", url: "https://www.eviemagazine.com/post/45-percent-women-are-expected-to-be-single-and-childless-by-2030", title: "45% of Women Single/Childless by 2030", source: "Evie Magazine" },
+            { id: "a13", url: "https://www.medicalnewstoday.com/articles/316215", title: "The Effects of Touch Starvation", source: "Medical News Today" },
+            { id: "a14", url: "https://link.springer.com/article/10.1007/s42380-019-00035-5", title: "Narcissism and Social Media Use", source: "Springer" },
+            { id: "a15", url: "https://www.sciencedirect.com/science/article/pii/S1740144517305326", title: "Instagram and Body Dissatisfaction", source: "ScienceDirect" },
+            { id: "a16", url: "https://www.latimes.com/california/story/2024-06-14/the-dirty-secret-of-californias-legal-weed", title: "California's Legal Weed Secret", source: "LA Times" },
+            { id: "a17", url: "https://www.liebertpub.com/doi/10.1089/cyber.2013.0305", title: "Facebook and Loneliness Connection", source: "LiebertPub" },
+            { id: "a18", url: "https://www.ingentaconnect.com/content/sbp/sbp/1995/00000023/00000002/art00003", title: "Self-Esteem and Media Exposure", source: "IngentaConnect" },
+            { id: "a19", url: "https://link.springer.com/article/10.1007/s42380-020-00073-4", title: "Digital Well-being Research", source: "Springer" },
+            { id: "a20", url: "https://www.aacap.org/AACAP/Families_and_Youth/Facts_for_Families/FFF-Guide/Teenagers-With-Eating-Disorders-002.aspx", title: "Teens With Eating Disorders Guide", source: "AACAP" },
+            { id: "a21", url: "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2792687/", title: "Social Networking and Psychopathology", source: "NCBI/PMC" },
+            { id: "a22", url: "https://www.nature.com/articles/s41386-020-00950-y", title: "Reward Processing and Social Media", source: "Nature" },
+            { id: "a23", url: "https://www.healthaffairs.org/doi/10.1377/hlthaff.2020.01472", title: "Mental Health Outcomes & Access", source: "Health Affairs" },
+            { id: "a24", url: "https://journals.sagepub.com/doi/full/10.1177/2631831818821535", title: "Digital Phenotyping in Psychiatry", source: "SAGE" },
+            { id: "a25", url: "https://journals.sagepub.com/doi/full/10.1177/26318318231153984", title: "Depression and Social Media Trends", source: "SAGE" },
+            { id: "a26", url: "https://prcp.psychiatryonline.org/doi/full/10.1176/appi.prcp.20190015", title: "Digital Mental Health Delivery", source: "PsychiatryOnline" },
+            { id: "a27", url: "https://www.cdc.gov/mmwr/volumes/70/wr/mm7024e1.htm", title: "Adolescent Suicide Trends", source: "CDC" },
+            { id: "a28", url: "https://www.cureus.com/articles/31508-social-media-use-and-its-connection-to-mental-health-a-systematic-review", title: "Systematic Review of Social Media", source: "Cureus" },
+            { id: "a29", url: "https://journals.sagepub.com/doi/full/10.1177/1090198119863768", title: "Peer Appearance Comparisons", source: "SAGE" },
+            { id: "a30", url: "https://www.insider.com/chatgpt-passes-medical-exam-diagnoses-rare-condition-2023-4", title: "ChatGPT Medical Accuracy", source: "Insider" },
+            { id: "a31", url: "https://share.newsbreak.com/4h32izla", title: "Community Health Report", source: "Newsbreak" },
+            { id: "a32", url: "https://datepsychology.com/top-deal-breakers-on-dating-apps/", title: "Dating App Deal Breakers", source: "Date Psychology" },
+            { id: "a33", url: "https://www.cnn.com/2023/03/23/health/mental-health-college-dropout-survey-wellness/index.html", title: "College Dropout Mental Health Survey", source: "CNN" },
+            { id: "a34", url: "https://www.cnn.com/2023/02/13/health/kids-er-mental-health/index.html", title: "ER Visits for Pediatric Mental Health", source: "CNN" },
+            { id: "a35", url: "https://www.apa.org/monitor/2022/10/mental-health-campus-care", title: "Crisis on Campus", source: "APA" },
+            { id: "a36", url: "https://www.npr.org/2023/06/26/1184289296/harvard-professor-dishonesty-francesca-gino", title: "Harvard Honesty Professor Fraud", source: "NPR" },
+            { id: "a37", url: "https://research.uh.edu/the-big-idea/university-research-explained/five-cases-of-research-fraud/", title: "5 Cases of Research Fraud", source: "University of Houston" },
+            { id: "a38", url: "https://www.theguardian.com/us-news/2021/jun/30/us-crime-rate-homcides-explained", title: "US Crime Rate Explained", source: "The Guardian" },
+            { id: "a39", url: "https://usafacts.org/state-of-the-union/crime-justice/", title: "Crime & Justice Snapshot", source: "USAFacts" },
+            { id: "a40", url: "https://www.huffpost.com/entry/illinoiss-cash-bail-abolishment-goes-into-effect-monday_n_65086627e4b0d98f39e7eeab", title: "Illinois Abolishes Cash Bail", source: "HuffPost" },
+            { id: "a41", url: "https://theintercept.com/2023/09/12/national-security-dementia-mcconnell-feinstein/", title: "Security Risk: Senior Leadership", source: "The Intercept" },
+            { id: "a42", url: "https://www.wusa9.com/article/news/investigations/dc-police-jump-outs-tyre-nichols-dc-police-unconsitutional-stop/65-a170a6af-613f-4adf-97ef-7c3b7972c40f", title: "DC Police Jump Outs Investigation", source: "WUSA9" },
+            { id: "a43", url: "https://www.ncbi.nlm.nih.gov/books/NBK537064/", title: "Public Health & Police Brutality", source: "NCBI" },
+            { id: "a44", url: "https://www.wired.com/video/watch/pre-crime-policing-how-cops-are-using-algorithms-to-predict-crimes", title: "Pre-Crime Policing Algorithms", source: "Wired" },
+            { id: "a45", url: "https://www.theguardian.com/commentisfree/2021/mar/13/american-dream-broken-upward-mobility-us", title: "The Broken American Dream", source: "The Guardian" },
+            { id: "a46", url: "https://www.mystateline.com/news/local-news/illinois-to-pay-residents-54k-a-year-for-tech-job-training/amp/", title: "Illinois Tech Training Grants", source: "MyStateline" },
+            { id: "a47", url: "https://www.npr.org/2023/09/10/1193755188/chile-coup-50-years-pinochet-kissinger-human-rights-allende", title: "50 Years Since Chile Coup", source: "NPR" },
+            // NEW ADDITIONS
+            { id: "a48", url: "https://www.theguardian.com/us-news/2017/may/05/cia-long-history-kill-leaders-around-the-world-north-korea", title: "CIA's Global Assassination History", source: "The Guardian" },
+            { id: "a49", url: "https://foreignpolicy.com/2013/08/20/mapped-the-7-governments-the-u-s-has-overthrown/", title: "7 U.S. Overthrown Governments", source: "Foreign Policy" },
+            { id: "a50", url: "https://popularresistance.org/us-has-killed-more-than-20-million-in-37-nations-since-wwii/", title: "U.S. Casualties in 37 Nations Since WWII", source: "Popular Resistance" },
+            { id: "a51", url: "https://firearmslaw.duke.edu/2020/08/assassinating-sovereigns-and-american-foreign-policy/", title: "Assassinating Sovereigns & Foreign Policy", source: "Duke Law" },
+            { id: "a52", url: "https://theintercept.com/2023/10/31/gaza-death-palestine-health-ministry/", title: "Gaza Death Toll Verification", source: "The Intercept" },
+            { id: "a53", url: "https://www.nbcnews.com/id/wbna4587368", title: "CIA's Secret Global Black Sites", source: "NBC News" },
+            { id: "a54", url: "https://www.counterpunch.org/2014/09/19/how-the-us-helped-create-al-qaeda-and-isis/", title: "U.S. Role in AL-Qaeda/ISIS Origins", source: "CounterPunch" },
+            { id: "a55", url: "https://www.nbcnews.com/id/wbna5223932", title: "Targeted Killing Program Analysis", source: "NBC News" },
+            { id: "a56", url: "https://www.newyorker.com/magazine/2007/08/13/the-black-sites", title: "Report: The Black Sites", source: "The New Yorker" },
+            { id: "a57", url: "https://www.cbsnews.com/newyork/news/general-motors-settlement/", title: "General Motors Major Settlement", source: "CBS News" },
+            { id: "a58", url: "https://theconversation.com/us-military-is-a-bigger-polluter-than-as-many-as-140-countries-shrinking-this-war-machine-is-a-must-119269", title: "U.S. Military Environmental Impact", source: "The Conversation" },
+            { id: "a59", url: "https://www.forbes.com/sites/trevornace/2019/10/29/coca-cola-named-the-worlds-most-polluting-brand-in-plastic-waste-audit/", title: "Coca-Cola: Top Plastic Polluter", source: "Forbes" },
+            { id: "a60", url: "https://www.theverge.com/2022/3/25/22995144/microsoft-foreign-corrupt-practices-bribery-whistleblower-contracting", title: "Microsoft Foreign Bribery Case", source: "The Verge" },
+            { id: "a61", url: "https://www.dianuke.org/nuclear-power-plant-accidents-listed-and-ranked-since-1952/", title: "Nuclear Accidents Ranked Since 1952", source: "DiaNuke" },
+            { id: "a62", url: "https://theintercept.com/2023/11/08/oregon-police-surveillance-protests-activists/", title: "Oregon Activist Surveillance", source: "The Intercept" },
+            { id: "a63", url: "https://www.newyorkfed.org/newsevents/news/research/2023/20230515", title: "Household Debt & Credit Report", source: "NY Fed" },
+            { id: "a64", url: "https://theintercept.com/2023/11/13/gaza-lawsuit-biden-israel-genocide/", title: "Gaza Policy Legal Challenge", source: "The Intercept" },
+            { id: "a65", url: "https://truthout.org/articles/for-20-years-team-bush-has-escaped-prosecution-for-war-crimes-in-iraq/", title: "20 Years: Iraq War Prosecution Escapes", source: "Truthout" },
+            { id: "a66", url: "https://www.esquire.com/news-politics/politics/news/a35397/bush-cheney-war-crimes/", title: "The Bush-Cheney War Crimes Legacy", source: "Esquire" },
+            { id: "a67", url: "https://www.commondreams.org/news/2012/05/13/war-tribunal-finds-bush-cheney-guilty-war-crimes", title: "Tribunal: Bush & Cheney Guilty", source: "Common Dreams" },
+            { id: "a68", url: "https://www.theguardian.com/us-news/2022/may/19/george-bush-iraq-ukraine-speech", title: "Bush's Iraq Speech Slip Analysis", source: "The Guardian" },
+            { id: "a69", url: "https://nces.ed.gov/fastfacts/display.asp?id=49", title: "Fast Facts: School Crime Stats", source: "NCES" },
+            { id: "a70", url: "https://www.dhs.gov/school-and-workplace-violence", title: "Preventing Workplace & School Violence", source: "DHS" },
+            { id: "a71", url: "https://nij.ojp.gov/topics/articles/what-do-data-reveal-about-violence-schools", title: "Data Reveal: School Violence Trends", source: "NIJ" },
+            { id: "a72", url: "https://worldpopulationreview.com/country-rankings/school-shootings-by-country", title: "School Shootings: Global Rankings", source: "WPR" },
+            { id: "a73", url: "https://www.thetrace.org/2021/10/why-more-shootings-in-america-gun-violence-data-research/", title: "Why America Has More Shootings", source: "The Trace" },
+            { id: "a74", url: "https://www.worldatlas.com/articles/countries-with-the-highest-rate-of-gun-ownership.html", title: "Highest Rates of Gun Ownership", source: "WorldAtlas" },
+            { id: "a75", url: "https://www.theguardian.com/us-news/2020/jun/22/us-police-human-rights-standards-report", title: "Report: Police & Human Rights", source: "The Guardian" },
+            { id: "a76", url: "https://www.brookings.edu/articles/the-collateral-consequences-of-state-sanctioned-police-violence-for-women/", title: "Police Violence Impacts on Women", source: "Brookings" },
+            { id: "a77", url: "https://wlrc.uic.edu/state-sanctioned-violence-against-black-women/", title: "Violence Against Black Women", source: "UIC" },
+            { id: "a78", url: "https://fair.org/home/blaming-mass-shootings-on-mental-illness-doesnt-address-either-issue/", title: "Shootings & Mental Illness Myths", source: "FAIR" },
+            { id: "a79", url: "https://namica.org/advocacy/criminal-justice-advocacy/the-truth-about-mental-health-and-gun-violence/", title: "The Truth: Mental Health & Guns", source: "NAMI CA" },
+            { id: "a80", url: "https://www.statista.com/chart/18417/global-weapons-exports/", title: "Global Weapons Export Leaders", source: "Statista" },
+            { id: "a81", url: "https://www.thetrace.org/2023/03/guns-america-data-atf-total/", title: "ATF Data: Total Guns in America", source: "The Trace" },
+            { id: "a82", url: "https://americangunfacts.com/gun-ownership-statistics/", title: "2024 Gun Ownership Statistics", source: "Gun Facts" },
+            { id: "a83", url: "https://www.perplexity.ai/page/ai-can-already-replace-12-of-u-Q8tHx9EVTVmKFPBYURzJkQ", title: "AI Replacement: Labor Analysis", source: "Perplexity" }
+        ];
 
         const USLiveClocks = () => {
             const [time, setTime] = useState(new Date());
@@ -87,6 +171,7 @@
                 const timer = setInterval(() => setTime(new Date()), 1000);
                 return () => clearInterval(timer);
             }, []);
+            const format = (tz) => time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: tz });
             const zones = [
                 { label: 'HST', zone: 'Pacific/Honolulu' }, { label: 'AKT', zone: 'America/Anchorage' },
                 { label: 'PT', zone: 'America/Los_Angeles' }, { label: 'MT', zone: 'America/Denver' },
@@ -97,7 +182,7 @@
                     {zones.map(z => (
                         <div key={z.label} className="flex items-center gap-2">
                             <span className="opacity-50">{z.label}</span>
-                            <span className="font-mono">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: z.zone })}</span>
+                            <span className="font-mono">{format(z.zone)}</span>
                         </div>
                     ))}
                 </div>
@@ -122,7 +207,7 @@
         const AIAssistant = ({ theme }) => {
             const [isOpen, setIsOpen] = useState(false);
             const [query, setQuery] = useState('');
-            const [messages, setMessages] = useState([{ role: 'ai', text: "Researcher active. Ready for analysis." }]);
+            const [messages, setMessages] = useState([{ role: 'ai', text: "Researcher active. Ready to cross-reference articles." }]);
             const [isTyping, setIsTyping] = useState(false);
             const handleAsk = async (e) => {
                 e.preventDefault();
@@ -146,18 +231,18 @@
                                 {messages.map((m, i) => (
                                     <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-[#E63946] text-white' : theme === 'light' ? 'bg-white shadow-sm' : 'bg-[#0F172A] border border-gray-700 text-white'}`}>
-                                            <p>{m.text}</p>
+                                            <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                             <form onSubmit={handleAsk} className={`p-4 border-t flex gap-2 ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A]'}`}>
-                                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Enter query..." className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm text-black" />
+                                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Cross-reference topics..." className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm text-black" />
                                 <button type="submit" className="bg-[#0A192F] text-white p-2 rounded-full"><Icon name="Send" size={18} /></button>
                             </form>
                         </div>
                     ) : (
-                        <button onClick={() => setIsOpen(true)} className="bg-[#0A192F] text-white p-4 rounded-full shadow-2xl flex items-center gap-3"><Icon name="Sparkles" /><span className="font-bold text-sm">Ask AI ✨</span></button>
+                        <button onClick={() => setIsOpen(true)} className="bg-[#0A192F] text-white p-4 rounded-full shadow-2xl flex items-center gap-3"><Icon name="Sparkles" /><span className="font-bold text-sm">Analyze ✨</span></button>
                     )}
                 </div>
             );
@@ -172,7 +257,6 @@
 
             return (
                 <div className="relative antialiased">
-                    {/* Floating Toggle Controls */}
                     <div className="fixed bottom-6 left-6 z-[200] flex gap-2 p-2 bg-white/90 dark:bg-[#0A192F]/90 backdrop-blur shadow-2xl rounded-2xl border border-white/10 items-center">
                         <button onClick={() => setConcept('grid')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'grid' ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}><Icon name="LayoutGrid" /><span className="text-[8px] font-bold uppercase">Grid</span></button>
                         <button onClick={() => setConcept('list')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'list' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}><Icon name="List" /><span className="text-[8px] font-bold uppercase">List</span></button>
@@ -182,8 +266,7 @@
                         </button>
                     </div>
 
-                    {/* Back to Top Button */}
-                    <button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="fixed bottom-[150px] right-6 p-4 bg-red-600 text-white rounded-full z-[105] shadow-xl hover:scale-110 transition-transform"><Icon name="ChevronUp" size={24} /></button>
+                    <button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="fixed bottom-[220px] right-6 p-4 bg-red-600 text-white rounded-full z-[105] shadow-xl hover:scale-110 transition-transform"><Icon name="ChevronUp" size={24} /></button>
 
                     <VideoModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
                     <AIAssistant theme={theme} />
@@ -193,32 +276,69 @@
                             <USLiveClocks />
                             <header className={`py-12 px-6 text-center border-b-4 ${theme === 'light' ? 'border-[#0A192F]' : 'border-red-600'}`}>
                                 <h1 className="text-7xl font-black italic uppercase tracking-tighter">THE RECORD</h1>
-                                <p className="text-xs font-bold uppercase tracking-[0.5em] opacity-40 mt-2">VIDEO ARCHIVE</p>
+                                <p className="text-xs font-bold uppercase tracking-[0.5em] opacity-40 mt-2">INVESTIGATIVE ARCHIVE</p>
                             </header>
-                            <main className="max-w-7xl mx-auto px-6 py-12">
-                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    {VIDEOS.map(v => (
-                                        <div key={v.id} className={`group border cursor-pointer rounded-xl overflow-hidden transition-all duration-500 hover:scale-[1.02] ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-[#0F172A] border-gray-800'}`} onClick={() => setPlayingVideo(v)}>
-                                            <div className="relative aspect-video overflow-hidden">
-                                                <img src={`https://img.youtube.com/vi/${v.youtubeId}/mqdefault.jpg`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Icon name="Play" size={48} className="text-white" /></div>
+
+                            <main className="max-w-7xl mx-auto px-6 py-12 space-y-24">
+                                <section>
+                                    <h2 className="text-3xl font-black uppercase tracking-tighter mb-12 flex items-center gap-4">
+                                        <Icon name="Youtube" className="text-red-600" /> Video Reports
+                                    </h2>
+                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                        {VIDEOS.map(v => (
+                                            <div key={v.id} className={`group border cursor-pointer rounded-xl overflow-hidden transition-all duration-500 hover:scale-[1.02] ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-[#0F172A] border-gray-800'}`} onClick={() => setPlayingVideo(v)}>
+                                                <div className="relative aspect-video overflow-hidden">
+                                                    <img src={`https://img.youtube.com/vi/${v.youtubeId}/mqdefault.jpg`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Icon name="Play" size={48} className="text-white" /></div>
+                                                </div>
+                                                <div className="p-5">
+                                                    <div className="text-[10px] font-bold uppercase tracking-widest text-red-500 mb-2">Report</div>
+                                                    <h3 className={`font-bold uppercase leading-tight group-hover:text-red-500 transition-colors ${theme === 'light' ? 'text-black' : 'text-white'}`}>{v.title}</h3>
+                                                </div>
                                             </div>
-                                            <div className="p-5"><h3 className={`font-bold uppercase group-hover:text-red-500 transition-colors ${theme === 'light' ? 'text-black' : 'text-white'}`}>{v.title}</h3></div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h2 className="text-3xl font-black uppercase tracking-tighter mb-12 flex items-center gap-4">
+                                        <Icon name="BookOpen" className="text-blue-600" /> Required Reading
+                                    </h2>
+                                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                        {ARTICLES.map(a => (
+                                            <a key={a.id} href={a.url} target="_blank" className={`p-6 border rounded-xl group transition-all hover:border-blue-500 flex flex-col ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-[#0F172A] border-gray-800'}`}>
+                                                <div className="text-[10px] font-bold uppercase tracking-widest text-blue-500 mb-3">{a.source}</div>
+                                                <h3 className={`font-bold uppercase text-sm leading-tight mb-4 group-hover:text-blue-500 transition-colors flex-1 ${theme === 'light' ? 'text-black' : 'text-white'}`}>{a.title}</h3>
+                                                <div className="flex items-center gap-2 text-[10px] font-black uppercase opacity-40 mt-4">
+                                                    Read Article <Icon name="ArrowUpRight" size={12} />
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </section>
                             </main>
                         </div>
                     ) : (
                         <div className="bg-[#1B4332] text-[#F8F9FA]">
-                            <header className="fixed top-0 w-full z-50 p-8 text-2xl font-serif italic mix-blend-difference">Archive List</header>
+                            <header className="fixed top-0 w-full z-50 p-8 text-2xl font-serif italic mix-blend-difference">Archive Viewer</header>
                             <main>
+                                <section className="min-h-screen flex flex-col items-center justify-center p-12 bg-[#0A192F]">
+                                    <h2 className="text-6xl font-black uppercase tracking-tighter italic text-white mb-12 text-center">Required Reading</h2>
+                                    <div className="max-w-6xl w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {ARTICLES.map(a => (
+                                            <a key={a.id} href={a.url} target="_blank" className="p-4 rounded-xl border border-white/20 hover:bg-white hover:text-black transition-all text-[10px] font-bold uppercase tracking-widest flex items-center justify-between">
+                                                <span>{a.title}</span>
+                                                <Icon name="ExternalLink" size={12} />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </section>
                                 {VIDEOS.map((v, i) => (
                                     <section key={v.id} className="min-h-screen flex items-center justify-center sticky top-0" style={{ backgroundColor: i % 2 === 0 ? '#1B4332' : '#D9480F' }}>
                                         <div className="max-w-6xl w-full px-12 grid lg:grid-cols-2 gap-16 items-center">
                                             <div className="order-2 lg:order-1">
                                                 <h2 className="text-4xl sm:text-6xl font-serif italic mb-6 leading-tight">{v.title}</h2>
-                                                <button onClick={() => setPlayingVideo(v)} className="px-8 py-4 rounded-full border border-white hover:bg-white hover:text-black transition-all font-bold uppercase text-xs tracking-widest">Watch Now</button>
+                                                <button onClick={() => setPlayingVideo(v)} className="px-8 py-4 rounded-full border border-white hover:bg-white hover:text-black transition-all font-bold uppercase text-xs tracking-widest">Watch Report</button>
                                             </div>
                                             <div className="order-1 lg:order-2 rounded-2xl shadow-3xl overflow-hidden aspect-video relative group cursor-pointer" onClick={() => setPlayingVideo(v)}>
                                                 <img src={`https://img.youtube.com/vi/${v.youtubeId}/maxresdefault.jpg`} className="w-full h-full object-cover" />
