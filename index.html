@@ -24,6 +24,9 @@
         
         .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; }
         .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 1rem; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
     </style>
 </head>
 <body>
@@ -34,23 +37,22 @@
 
         const apiKey = ""; // Gemini API Key
 
-        // The 15 videos requested by the user
         const VIDEOS = [
-            { id: 'v1', youtubeId: 'vK4y6C1Uuhw', title: 'Why the rate of single men in the US looking for dates has declined - CNN', thumbnail: 'https://youtu.be/vK4y6C1Uuhw?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v2', youtubeId: 'Tmo8geBTARk', title: '63% Of Men Under 30 Are Single - Courtney Ryan', thumbnail: 'https://youtu.be/Tmo8geBTARk?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v3', youtubeId: 'ilr1GpBzdeU', title: 'Why Aren't Men Getting Married Anymore? And Where Have the Manly Men Gone? - Suzanne Venker', thumbnail: 'https://youtu.be/ilr1GpBzdeU?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v4', youtubeId: 'nT9BX9iITz4', title: 'WARNING To Childless Women - Are You Happier or Miserable With That Decision? - Valuetainment', thumbnail: 'https://youtu.be/nT9BX9iITz4?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v5', youtubeId: 'yFgyEYZjT-U', title: 'Gen Z's Escapism Has Gone Too Far - Misha Petrov', thumbnail: 'https://youtu.be/yFgyEYZjT-U?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v6', youtubeId: 'aUy29XHSlkU', title: 'Tim Pool: 'High Quality Men' Should SHAME Arractive Women Into Not Being 'Instagram Hoes' - The Hill', thumbnail: 'https://youtu.be/aUy29XHSlkU?si=9O-3m8ButbhM89Ep?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v7', youtubeId: '5gIQ8Gyduog', title: 'Video Report 07', thumbnail: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v8', youtubeId: 'uyrhmVSKwxE', title: 'REPLIKA - A CyberS*xual DISASTER - Upper Echelon', thumbnail: 'https://youtu.be/uyrhmVSKwxE?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v9', youtubeId: 'XGAMgPw3KlU', title: 'MAGA Girl DROPS TRUTH BOMBS About Western Women?! - whatever clips', thumbnail: 'https://youtu.be/XGAMgPw3KlU?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v10', youtubeId: 'nd_DVx5mQN4', title: 'Body Counts Are Rising, Marriage Rates Are Falling - The Comments Section', thumbnail: 'https://youtu.be/nd_DVx5mQN4?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v11', youtubeId: '9547hkXTGHw', title: 'Why Men Live Harder Lives Than Women - Valuetainment', thumbnail: 'https://youtu.be/9547hkXTGHw?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v12', youtubeId: 'W0TlYeCY8pM', title: ''IT'S COMING': Expert warns AI companions could harm human connection - Fox News', thumbnail: 'https://youtu.be/W0TlYeCY8pM?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v13', youtubeId: 'Q9kKu9Kglog', title: 'Hey Snapchat, This Is A BAD Move - The Comments Section', thumbnail: 'https://youtu.be/Q9kKu9Kglog?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v14', youtubeId: 'tk5KoWUwz6Q', title: 'The World Population Collapse No One's Talking About - Two Bit da Vinci', thumbnail: 'https://youtu.be/tk5KoWUwz6Q?si=uZdx84DM03YN0plN?auto=format&fit=crop&q=80&w=800' },
-            { id: 'v15', youtubeId: 'beLEmk_FIEM', title: 'Let's Talk about Touch Starvation (Reddit Review) - HealthyGamerGG', thumbnail: 'https://youtu.be/beLEmk_FIEM?auto=format&fit=crop&q=80&w=800' }
+            { id: "v1", youtubeId: "vK4y6C1Uuhw", title: "Why the rate of single men in the US looking for dates has declined - CNN" },
+            { id: "v2", youtubeId: "Tmo8geBTARk", title: "63% Of Men Under 30 Are Single - Courtney Ryan" },
+            { id: "v3", youtubeId: "ilr1GpBzdeU", title: "Why Aren't Men Getting Married Anymore? And Where Have the Manly Men Gone? - Suzanne Venker" },
+            { id: "v4", youtubeId: "nT9BX9iITz4", title: "WARNING To Childless Women - Are You Happier or Miserable With That Decision? - Valuetainment" },
+            { id: "v5", youtubeId: "yFgyEYZjT-U", title: "Gen Z's Escapism Has Gone Too Far - Misha Petrov" },
+            { id: "v6", youtubeId: "aUy29XHSlkU", title: "Tim Pool: 'High Quality Men' Should SHAME Attractive Women Into Not Being 'Instagram Hoes' - The Hill" },
+            { id: "v7", youtubeId: "5gIQ8Gyduog", title: "Video Report 07 - Societal Analysis" },
+            { id: "v8", youtubeId: "uyrhmVSKwxE", title: "REPLIKA - A CyberSexual DISASTER - Upper Echelon" },
+            { id: "v9", youtubeId: "XGAMgPw3KlU", title: "MAGA Girl DROPS TRUTH BOMBS About Western Women?! - whatever clips" },
+            { id: "v10", youtubeId: "nd_DVx5mQN4", title: "Body Counts Are Rising, Marriage Rates Are Falling - The Comments Section" },
+            { id: "v11", youtubeId: "9547hkXTGHw", title: "Why Men Live Harder Lives Than Women - Valuetainment" },
+            { id: "v12", youtubeId: "W0TlYeCY8pM", title: "'IT'S COMING': Expert warns AI companions could harm human connection - Fox News" },
+            { id: "v13", youtubeId: "Q9kKu9Kglog", title: "Hey Snapchat, This Is A BAD Move - The Comments Section" },
+            { id: "v14", youtubeId: "tk5KoWUwz6Q", title: "The World Population Collapse No One's Talking About - Two Bit da Vinci" },
+            { id: "v15", youtubeId: "beLEmk_FIEM", title: "Let's Talk about Touch Starvation (Reddit Review) - HealthyGamerGG" }
         ];
 
         const Icon = ({ name, size = 20, className = "" }) => {
@@ -85,7 +87,6 @@
                 const timer = setInterval(() => setTime(new Date()), 1000);
                 return () => clearInterval(timer);
             }, []);
-            // Reversed order: HST to ET
             const zones = [
                 { label: 'HST', zone: 'Pacific/Honolulu' }, { label: 'AKT', zone: 'America/Anchorage' },
                 { label: 'PT', zone: 'America/Los_Angeles' }, { label: 'MT', zone: 'America/Denver' },
@@ -106,7 +107,7 @@
         const VideoModal = ({ video, onClose }) => {
             if (!video) return null;
             return (
-                <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 sm:p-12">
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 sm:p-12 animate-fade-in">
                     <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={onClose} />
                     <div className="relative w-full max-w-6xl aspect-video bg-black shadow-2xl overflow-hidden sm:rounded-3xl border border-white/10">
                         <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all">
@@ -134,7 +135,7 @@
                 setIsTyping(false);
             };
             return (
-                <div className="fixed bottom-24 right-6 z-[110]">
+                <div className="fixed bottom-6 right-6 z-[110]">
                     {isOpen ? (
                         <div className={`w-80 sm:w-96 h-[500px] rounded-2xl shadow-2xl border flex flex-col overflow-hidden ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A] border-gray-800'}`}>
                             <div className="bg-[#0A192F] p-4 text-white flex justify-between items-center">
@@ -171,7 +172,7 @@
 
             return (
                 <div className="relative antialiased">
-                    {/* Controls */}
+                    {/* Floating Toggle Controls */}
                     <div className="fixed bottom-6 left-6 z-[200] flex gap-2 p-2 bg-white/90 dark:bg-[#0A192F]/90 backdrop-blur shadow-2xl rounded-2xl border border-white/10 items-center">
                         <button onClick={() => setConcept('grid')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'grid' ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}><Icon name="LayoutGrid" /><span className="text-[8px] font-bold uppercase">Grid</span></button>
                         <button onClick={() => setConcept('list')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'list' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}><Icon name="List" /><span className="text-[8px] font-bold uppercase">List</span></button>
@@ -181,7 +182,8 @@
                         </button>
                     </div>
 
-                    <button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="fixed bottom-[150px] right-6 p-4 bg-red-600 text-white rounded-full z-[105] shadow-xl"><Icon name="ChevronUp" size={24} /></button>
+                    {/* Back to Top Button */}
+                    <button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="fixed bottom-[150px] right-6 p-4 bg-red-600 text-white rounded-full z-[105] shadow-xl hover:scale-110 transition-transform"><Icon name="ChevronUp" size={24} /></button>
 
                     <VideoModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
                     <AIAssistant theme={theme} />
@@ -196,9 +198,9 @@
                             <main className="max-w-7xl mx-auto px-6 py-12">
                                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
                                     {VIDEOS.map(v => (
-                                        <div key={v.id} className={`group border cursor-pointer rounded-xl overflow-hidden transition-all duration-500 ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-[#0F172A] border-gray-800'}`} onClick={() => setPlayingVideo(v)}>
+                                        <div key={v.id} className={`group border cursor-pointer rounded-xl overflow-hidden transition-all duration-500 hover:scale-[1.02] ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-[#0F172A] border-gray-800'}`} onClick={() => setPlayingVideo(v)}>
                                             <div className="relative aspect-video overflow-hidden">
-                                                <img src={v.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                <img src={`https://img.youtube.com/vi/${v.youtubeId}/mqdefault.jpg`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Icon name="Play" size={48} className="text-white" /></div>
                                             </div>
                                             <div className="p-5"><h3 className={`font-bold uppercase group-hover:text-red-500 transition-colors ${theme === 'light' ? 'text-black' : 'text-white'}`}>{v.title}</h3></div>
@@ -215,11 +217,11 @@
                                     <section key={v.id} className="min-h-screen flex items-center justify-center sticky top-0" style={{ backgroundColor: i % 2 === 0 ? '#1B4332' : '#D9480F' }}>
                                         <div className="max-w-6xl w-full px-12 grid lg:grid-cols-2 gap-16 items-center">
                                             <div className="order-2 lg:order-1">
-                                                <h2 className="text-6xl font-serif italic mb-6 leading-tight">{v.title}</h2>
+                                                <h2 className="text-4xl sm:text-6xl font-serif italic mb-6 leading-tight">{v.title}</h2>
                                                 <button onClick={() => setPlayingVideo(v)} className="px-8 py-4 rounded-full border border-white hover:bg-white hover:text-black transition-all font-bold uppercase text-xs tracking-widest">Watch Now</button>
                                             </div>
                                             <div className="order-1 lg:order-2 rounded-2xl shadow-3xl overflow-hidden aspect-video relative group cursor-pointer" onClick={() => setPlayingVideo(v)}>
-                                                <img src={v.thumbnail} className="w-full h-full object-cover" />
+                                                <img src={`https://img.youtube.com/vi/${v.youtubeId}/maxresdefault.jpg`} className="w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="Play" size={64} /></div>
                                             </div>
                                         </div>
