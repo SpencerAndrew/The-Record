@@ -1,304 +1,239 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Play, 
-  ChevronRight, 
-  ChevronUp,
-  Newspaper, 
-  BookOpen, 
-  X,
-  Youtube,
-  Clock,
-  Sparkles,
-  Send,
-  Loader2,
-  Moon,
-  Sun
-} from 'lucide-react';
-
-// --- STREAMING_CHUNK:Configuring the Gemini API... ---
-const apiKey = ""; 
-
-const fetchGemini = async (prompt, systemInstruction = "", useSearch = false) => {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
-    tools: useSearch ? [{ google_search: {} }] : undefined,
-  };
-
-  const maxRetries = 3;
-  let delay = 1000;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!response.ok) throw new Error('API Error');
-      const data = await response.json();
-      return {
-        text: data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received.",
-        sources: data.candidates?.[0]?.groundingMetadata?.groundingAttributions?.map(a => ({ 
-          uri: a.web?.uri, 
-          title: a.web?.title 
-        })) || []
-      };
-    } catch (error) {
-      if (i === maxRetries - 1) throw error;
-      await new Promise(res => setTimeout(res, delay));
-      delay *= 2;
-    }
-  }
-};
-
-// --- STREAMING_CHUNK:Defining the Curated Video Database... ---
-// Strictly embedding the 15 requested YouTube videos with no extra categories
-const VIDEOS = [
-  { id: 'v1', youtubeId: 'vK4y6C1Uuhw', title: 'Video Report 01', thumbnail: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v2', youtubeId: 'Tmo8geBTARk', title: 'Video Report 02', thumbnail: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v3', youtubeId: 'ilr1GpBzdeU', title: 'Video Report 03', thumbnail: 'https://images.unsplash.com/photo-1545147986-a9d6f2bb03b5?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v4', youtubeId: 'nT9BX9iITz4', title: 'Video Report 04', thumbnail: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v5', youtubeId: 'yFgyEYZjT-U', title: 'Video Report 05', thumbnail: 'https://images.unsplash.com/photo-1496560238219-6093d17402ee?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v6', youtubeId: 'aUy29XHSlkU', title: 'Video Report 06', thumbnail: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v7', youtubeId: '5gIQ8Gyduog', title: 'Video Report 07', thumbnail: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v8', youtubeId: 'uyrhmVSKwxE', title: 'Video Report 08', thumbnail: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v9', youtubeId: 'XGAMgPw3KlU', title: 'Video Report 09', thumbnail: 'https://images.unsplash.com/photo-1542810634-71277d95dcbb?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v10', youtubeId: 'nd_DVx5mQN4', title: 'Video Report 10', thumbnail: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v11', youtubeId: '9547hkXTGHw', title: 'Video Report 11', thumbnail: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v12', youtubeId: 'W0TlYeCY8pM', title: 'Video Report 12', thumbnail: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v13', youtubeId: 'Q9kKu9Kglog', title: 'Video Report 13', thumbnail: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v14', youtubeId: 'tk5KoWUwz6Q', title: 'Video Report 14', thumbnail: 'https://images.unsplash.com/photo-1474487585617-9d7310e541ff?auto=format&fit=crop&q=80&w=800', date: 'May 2026' },
-  { id: 'v15', youtubeId: 'beLEmk_FIEM', title: 'Video Report 15', thumbnail: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&q=80&w=800', date: 'May 2026' }
-];
-
-// --- STREAMING_CHUNK:Building the Video Player Modal... ---
-const VideoPlayerModal = ({ video, onClose }) => {
-  if (!video) return null;
-  // Dynamic embedding using the YouTube ID
-  const embedUrl = `https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`;
-
-  return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 sm:p-12">
-      <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-6xl aspect-video bg-black shadow-2xl overflow-hidden sm:rounded-3xl border border-white/10 animate-in zoom-in-95 duration-300">
-        <button 
-          onClick={onClose} 
-          className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all"
-        >
-          <X size={24} />
-        </button>
-        <iframe 
-          src={embedUrl}
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        ></iframe>
-      </div>
-    </div>
-  );
-};
-
-// --- STREAMING_CHUNK:Initializing the AI Assistant... ---
-const AIResearchAssistant = ({ theme }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState([
-    { role: 'ai', text: "Researcher active. I can analyze the provided video list. What is your query?" }
-  ]);
-  const [isTyping, setIsTyping] = useState(false);
-
-  const handleAsk = async (e) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    const userMessage = { role: 'user', text: query };
-    setMessages(prev => [...prev, userMessage]);
-    setQuery('');
-    setIsTyping(true);
-
-    try {
-      const result = await fetchGemini(query, "You are a direct data analyzer. Provide concise info on the requested topics.", true);
-      setMessages(prev => [...prev, { role: 'ai', text: result.text, sources: result.sources }]);
-    } catch (err) {
-      setMessages(prev => [...prev, { role: 'ai', text: "Connection error." }]);
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
-  return (
-    <div className="fixed bottom-24 right-6 z-[110]">
-      {isOpen ? (
-        <div className={`w-80 sm:w-96 h-[500px] rounded-2xl shadow-2xl border flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300 ${
-          theme === 'light' ? 'bg-white border-gray-100' : 'bg-[#0F172A] border-gray-800'
-        }`}>
-          <div className="bg-[#0A192F] p-4 text-white flex justify-between items-center">
-            <span className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">Analysis Desk</span>
-            <button onClick={() => setIsOpen(false)}><X size={20} /></button>
-          </div>
-          <div className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar ${theme === 'light' ? 'bg-gray-50' : 'bg-[#1E293B]'}`}>
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-[#E63946] text-white' : theme === 'light' ? 'bg-white shadow-sm' : 'bg-[#0F172A] border border-gray-700 shadow-xl'}`}>
-                  <p className="whitespace-pre-wrap">{m.text}</p>
-                </div>
-              </div>
-            ))}
-            {isTyping && <div className="animate-pulse p-2 text-xs text-gray-500">Processing...</div>}
-          </div>
-          <form onSubmit={handleAsk} className={`p-4 border-t flex gap-2 ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A]'}`}>
-            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Enter query..." className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 text-sm text-black dark:text-white border-none outline-none" />
-            <button type="submit" className="bg-[#0A192F] text-white p-2 rounded-full"><Send size={18} /></button>
-          </form>
-        </div>
-      ) : (
-        <button onClick={() => setIsOpen(true)} className="bg-[#0A192F] text-white p-4 rounded-full shadow-2xl flex items-center gap-3 hover:scale-105 transition-all">
-          <Sparkles size={20} className="text-red-500" />
-          <span className="font-bold text-sm">Analyze ✨</span>
-        </button>
-      )}
-    </div>
-  );
-};
-
-// --- STREAMING_CHUNK:Implementing Clocks... ---
-const USLiveClocks = () => {
-  const [time, setTime] = useState(new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-  const zones = [
-    { label: 'HST', zone: 'Pacific/Honolulu' }, { label: 'AKT', zone: 'America/Anchorage' },
-    { label: 'PT', zone: 'America/Los_Angeles' }, { label: 'MT', zone: 'America/Denver' },
-    { label: 'CT', zone: 'America/Chicago' }, { label: 'ET', zone: 'America/New_York' },
-  ];
-  return (
-    <div className="bg-[#0A192F] text-white py-2 px-6 flex justify-center items-center flex-wrap gap-x-8 gap-y-1 text-[10px] font-black tracking-[0.2em] uppercase border-b border-white/10">
-      {zones.map(z => (
-        <div key={z.label} className="flex items-center gap-2">
-          <span className="opacity-50">{z.label}</span>
-          <span className="font-mono tabular-nums">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: z.zone })}</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const VideoCard = ({ video, theme, onClick }) => (
-  <div className={`group border cursor-pointer hover:shadow-2xl transition-all duration-500 overflow-hidden rounded-xl h-full flex flex-col ${theme === 'light' ? 'bg-white border-gray-100' : 'bg-[#0F172A] border-gray-800'}`} onClick={onClick}>
-    <div className="relative aspect-video overflow-hidden">
-      <img src={video.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={video.title} />
-      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-        <Youtube className="text-red-600" size={48} />
-      </div>
-    </div>
-    <div className="p-5 flex-1 flex flex-col">
-      <h3 className={`font-bold text-lg leading-tight mb-2 uppercase group-hover:text-red-500 transition-colors ${theme === 'dark' ? 'text-white' : 'text-[#0A192F]'}`}>{video.title}</h3>
-      <div className="mt-auto flex justify-between items-center text-[10px] uppercase font-bold opacity-50">
-        <span className="flex items-center gap-1">{video.date}</span>
-      </div>
-    </div>
-  </div>
-);
-
-// --- STREAMING_CHUNK:Rendering Main View... ---
-const ConceptFrontPage = ({ videos, theme, onPlay }) => {
-  return (
-    <div className={`min-h-screen transition-colors duration-500 ${theme === 'light' ? 'bg-white text-[#0A192F]' : 'bg-[#050b14] text-gray-100'}`}>
-      <USLiveClocks />
-      <header className={`py-12 px-6 text-center border-b-4 ${theme === 'light' ? 'border-[#0A192F]' : 'border-red-600'}`}>
-        <h1 className="text-7xl font-black italic uppercase tracking-tighter">THE RECORD</h1>
-        <p className="text-xs font-bold uppercase tracking-[0.5em] opacity-40 mt-2">VIDEO ARCHIVE</p>
-      </header>
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {videos.map(v => (
-            <VideoCard key={v.id} video={v} theme={theme} onClick={() => onPlay(v)} />
-          ))}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-// --- STREAMING_CHUNK:Rendering Immersive View... ---
-const ConceptImmersive = ({ videos, onPlay }) => (
-  <div className="bg-[#1B4332] text-[#F8F9FA]">
-    <header className="fixed top-0 w-full z-50 p-8 text-2xl font-serif italic mix-blend-difference">Archive Viewer</header>
-    <main>
-      {videos.map((v, i) => (
-        <section key={v.id} className="min-h-screen flex items-center justify-center sticky top-0" style={{ backgroundColor: i % 2 === 0 ? '#1B4332' : '#D9480F' }}>
-          <div className="max-w-6xl w-full px-12 grid lg:grid-cols-2 gap-16 items-center">
-            <div className="order-2 lg:order-1">
-              <div className="text-[10px] font-bold uppercase tracking-[0.4em] opacity-60 mb-2">Item 0{i + 1}</div>
-              <h2 className="text-6xl font-serif italic mb-6 leading-tight">{v.title}</h2>
-              <div className="flex gap-4">
-                <button onClick={() => onPlay(v)} className="px-8 py-4 rounded-full border border-white hover:bg-white hover:text-black transition-all font-bold uppercase text-xs tracking-widest">Watch Video</button>
-              </div>
-            </div>
-            <div className="order-1 lg:order-2 rounded-2xl shadow-3xl overflow-hidden aspect-video relative group cursor-pointer" onClick={() => onPlay(v)}>
-              <img src={v.thumbnail} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                 <Play size={64} className="fill-current" />
-              </div>
-            </div>
-          </div>
-        </section>
-      ))}
-    </main>
-  </div>
-);
-
-// --- STREAMING_CHUNK:Final App Assembly... ---
-export default function App() {
-  const [concept, setConcept] = useState('frontpage');
-  const [theme, setTheme] = useState('light');
-  const [playingVideo, setPlayingVideo] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(t);
-  }, [concept]);
-
-  return (
-    <div className="relative antialiased">
-      <div className="fixed bottom-6 left-6 z-[200] flex gap-2 p-2 bg-white/90 dark:bg-[#0A192F]/90 backdrop-blur shadow-2xl rounded-2xl border border-white/10 items-center">
-        <button onClick={() => setConcept('frontpage')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'frontpage' ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-          <Newspaper size={20} /><span className="text-[8px] font-bold uppercase">Grid</span>
-        </button>
-        <button onClick={() => setConcept('immersive')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'immersive' ? 'bg-[#1B4332] text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-          <BookOpen size={20} /><span className="text-[8px] font-bold uppercase">List</span>
-        </button>
-        <div className="w-px h-8 bg-gray-500/20 mx-2" />
-        <button onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} className="p-3 bg-gray-100 dark:bg-gray-800 rounded-xl">
-          {theme === 'light' ? <Moon size={20} className="text-[#0A192F]" /> : <Sun size={20} className="text-yellow-400" />}
-        </button>
-      </div>
-
-      <AIResearchAssistant theme={theme} />
-      <ChevronUp onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="fixed bottom-[150px] right-6 p-3 bg-red-600 text-white rounded-full cursor-pointer z-[105] shadow-xl hover:scale-110 transition-transform" size={48} />
-      
-      {playingVideo && <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />}
-
-      {loading ? (
-        <div className="h-screen w-full flex flex-col items-center justify-center bg-[#0A192F] text-white">
-          <Loader2 className="animate-spin mb-4" size={48} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.4em] animate-pulse">Syncing Archive...</p>
-        </div>
-      ) : (
-        concept === 'frontpage' ? 
-          <ConceptFrontPage videos={VIDEOS} theme={theme} onPlay={setPlayingVideo} /> :
-          <ConceptImmersive videos={VIDEOS} onPlay={setPlayingVideo} />
-      )}
-
-      <style dangerouslySetInnerHTML={{ __html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THE RECORD | Archive</title>
+    <!-- React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.5s ease; }
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #E63946; border-radius: 10px; }
         html { scroll-behavior: smooth; }
-      `}} />
-    </div>
-  );
-}
+        
+        .video-container { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; }
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 1rem; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const apiKey = ""; // Gemini API Key
+
+        // The 15 videos requested by the user
+        const VIDEOS = [
+            { id: 'v1', youtubeId: 'vK4y6C1Uuhw', title: 'Video Report 01', thumbnail: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v2', youtubeId: 'Tmo8geBTARk', title: 'Video Report 02', thumbnail: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v3', youtubeId: 'ilr1GpBzdeU', title: 'Video Report 03', thumbnail: 'https://images.unsplash.com/photo-1545147986-a9d6f2bb03b5?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v4', youtubeId: 'nT9BX9iITz4', title: 'Video Report 04', thumbnail: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v5', youtubeId: 'yFgyEYZjT-U', title: 'Video Report 05', thumbnail: 'https://images.unsplash.com/photo-1496560238219-6093d17402ee?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v6', youtubeId: 'aUy29XHSlkU', title: 'Video Report 06', thumbnail: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v7', youtubeId: '5gIQ8Gyduog', title: 'Video Report 07', thumbnail: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v8', youtubeId: 'uyrhmVSKwxE', title: 'Video Report 08', thumbnail: 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v9', youtubeId: 'XGAMgPw3KlU', title: 'Video Report 09', thumbnail: 'https://images.unsplash.com/photo-1542810634-71277d95dcbb?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v10', youtubeId: 'nd_DVx5mQN4', title: 'Video Report 10', thumbnail: 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v11', youtubeId: '9547hkXTGHw', title: 'Video Report 11', thumbnail: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v12', youtubeId: 'W0TlYeCY8pM', title: 'Video Report 12', thumbnail: 'https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v13', youtubeId: 'Q9kKu9Kglog', title: 'Video Report 13', thumbnail: 'https://images.unsplash.com/photo-1516733725897-1aa73b87c8e8?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v14', youtubeId: 'tk5KoWUwz6Q', title: 'Video Report 14', thumbnail: 'https://images.unsplash.com/photo-1474487585617-9d7310e541ff?auto=format&fit=crop&q=80&w=800' },
+            { id: 'v15', youtubeId: 'beLEmk_FIEM', title: 'Video Report 15', thumbnail: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&q=80&w=800' }
+        ];
+
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const [svg, setSvg] = useState('');
+            useEffect(() => {
+                if (window.lucide && window.lucide.icons[name]) {
+                    const iconDef = window.lucide.icons[name];
+                    const content = iconDef.map(seg => {
+                        const [tag, attrs] = seg;
+                        const attrStr = Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+                        return `<${tag} ${attrStr}></${tag}>`;
+                    }).join('');
+                    setSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${className}">${content}</svg>`);
+                }
+            }, [name, size, className]);
+            return <span dangerouslySetInnerHTML={{ __html: svg }} className="inline-flex" />;
+        };
+
+        const fetchGemini = async (prompt) => {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "No response.";
+            } catch (err) { return "Connection Error."; }
+        };
+
+        const USLiveClocks = () => {
+            const [time, setTime] = useState(new Date());
+            useEffect(() => {
+                const timer = setInterval(() => setTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+            // Reversed order: HST to ET
+            const zones = [
+                { label: 'HST', zone: 'Pacific/Honolulu' }, { label: 'AKT', zone: 'America/Anchorage' },
+                { label: 'PT', zone: 'America/Los_Angeles' }, { label: 'MT', zone: 'America/Denver' },
+                { label: 'CT', zone: 'America/Chicago' }, { label: 'ET', zone: 'America/New_York' },
+            ];
+            return (
+                <div className="bg-[#0A192F] text-white py-2 px-6 flex justify-center items-center flex-wrap gap-x-8 gap-y-1 text-[10px] font-black tracking-[0.2em] uppercase border-b border-white/10">
+                    {zones.map(z => (
+                        <div key={z.label} className="flex items-center gap-2">
+                            <span className="opacity-50">{z.label}</span>
+                            <span className="font-mono">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true, timeZone: z.zone })}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const VideoModal = ({ video, onClose }) => {
+            if (!video) return null;
+            return (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-0 sm:p-12">
+                    <div className="absolute inset-0 bg-black/95 backdrop-blur-md" onClick={onClose} />
+                    <div className="relative w-full max-w-6xl aspect-video bg-black shadow-2xl overflow-hidden sm:rounded-3xl border border-white/10">
+                        <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-white hover:text-black transition-all">
+                            <Icon name="X" size={24} />
+                        </button>
+                        <iframe src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1`} className="w-full h-full" allowFullScreen></iframe>
+                    </div>
+                </div>
+            );
+        };
+
+        const AIAssistant = ({ theme }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [query, setQuery] = useState('');
+            const [messages, setMessages] = useState([{ role: 'ai', text: "Researcher active. Ready for analysis." }]);
+            const [isTyping, setIsTyping] = useState(false);
+            const handleAsk = async (e) => {
+                e.preventDefault();
+                if (!query.trim()) return;
+                setMessages(prev => [...prev, { role: 'user', text: query }]);
+                setQuery('');
+                setIsTyping(true);
+                const res = await fetchGemini(query);
+                setMessages(prev => [...prev, { role: 'ai', text: res }]);
+                setIsTyping(false);
+            };
+            return (
+                <div className="fixed bottom-24 right-6 z-[110]">
+                    {isOpen ? (
+                        <div className={`w-80 sm:w-96 h-[500px] rounded-2xl shadow-2xl border flex flex-col overflow-hidden ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A] border-gray-800'}`}>
+                            <div className="bg-[#0A192F] p-4 text-white flex justify-between items-center">
+                                <span className="font-bold text-sm uppercase tracking-wider flex items-center gap-2">Research Desk</span>
+                                <button onClick={() => setIsOpen(false)}><Icon name="X" /></button>
+                            </div>
+                            <div className={`flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar ${theme === 'light' ? 'bg-gray-50' : 'bg-[#1E293B]'}`}>
+                                {messages.map((m, i) => (
+                                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[85%] p-3 rounded-2xl text-sm ${m.role === 'user' ? 'bg-[#E63946] text-white' : theme === 'light' ? 'bg-white shadow-sm' : 'bg-[#0F172A] border border-gray-700 text-white'}`}>
+                                            <p>{m.text}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <form onSubmit={handleAsk} className={`p-4 border-t flex gap-2 ${theme === 'light' ? 'bg-white' : 'bg-[#0F172A]'}`}>
+                                <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Enter query..." className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm text-black" />
+                                <button type="submit" className="bg-[#0A192F] text-white p-2 rounded-full"><Icon name="Send" size={18} /></button>
+                            </form>
+                        </div>
+                    ) : (
+                        <button onClick={() => setIsOpen(true)} className="bg-[#0A192F] text-white p-4 rounded-full shadow-2xl flex items-center gap-3"><Icon name="Sparkles" /><span className="font-bold text-sm">Ask AI ✨</span></button>
+                    )}
+                </div>
+            );
+        };
+
+        function App() {
+            const [concept, setConcept] = useState('grid');
+            const [theme, setTheme] = useState('light');
+            const [playingVideo, setPlayingVideo] = useState(null);
+
+            const gridClass = `min-h-screen transition-colors duration-500 ${theme === 'light' ? 'bg-white text-[#0A192F]' : 'bg-[#050b14] text-gray-100'}`;
+
+            return (
+                <div className="relative antialiased">
+                    {/* Controls */}
+                    <div className="fixed bottom-6 left-6 z-[200] flex gap-2 p-2 bg-white/90 dark:bg-[#0A192F]/90 backdrop-blur shadow-2xl rounded-2xl border border-white/10 items-center">
+                        <button onClick={() => setConcept('grid')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'grid' ? 'bg-red-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}><Icon name="LayoutGrid" /><span className="text-[8px] font-bold uppercase">Grid</span></button>
+                        <button onClick={() => setConcept('list')} className={`p-3 rounded-xl flex flex-col items-center gap-1 ${concept === 'list' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}><Icon name="List" /><span className="text-[8px] font-bold uppercase">List</span></button>
+                        <div className="w-px h-8 bg-gray-500/20 mx-2" />
+                        <button onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')} className="p-3 bg-gray-100 rounded-xl">
+                            {theme === 'light' ? <Icon name="Moon" className="text-[#0A192F]" /> : <Icon name="Sun" className="text-yellow-400" />}
+                        </button>
+                    </div>
+
+                    <button onClick={() => window.scrollTo({top:0, behavior:'smooth'})} className="fixed bottom-[150px] right-6 p-4 bg-red-600 text-white rounded-full z-[105] shadow-xl"><Icon name="ChevronUp" size={24} /></button>
+
+                    <VideoModal video={playingVideo} onClose={() => setPlayingVideo(null)} />
+                    <AIAssistant theme={theme} />
+
+                    {concept === 'grid' ? (
+                        <div className={gridClass}>
+                            <USLiveClocks />
+                            <header className={`py-12 px-6 text-center border-b-4 ${theme === 'light' ? 'border-[#0A192F]' : 'border-red-600'}`}>
+                                <h1 className="text-7xl font-black italic uppercase tracking-tighter">THE RECORD</h1>
+                                <p className="text-xs font-bold uppercase tracking-[0.5em] opacity-40 mt-2">VIDEO ARCHIVE</p>
+                            </header>
+                            <main className="max-w-7xl mx-auto px-6 py-12">
+                                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                                    {VIDEOS.map(v => (
+                                        <div key={v.id} className={`group border cursor-pointer rounded-xl overflow-hidden transition-all duration-500 ${theme === 'light' ? 'bg-white border-gray-100 shadow-sm' : 'bg-[#0F172A] border-gray-800'}`} onClick={() => setPlayingVideo(v)}>
+                                            <div className="relative aspect-video overflow-hidden">
+                                                <img src={v.thumbnail} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Icon name="Play" size={48} className="text-white" /></div>
+                                            </div>
+                                            <div className="p-5"><h3 className={`font-bold uppercase group-hover:text-red-500 transition-colors ${theme === 'light' ? 'text-black' : 'text-white'}`}>{v.title}</h3></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </main>
+                        </div>
+                    ) : (
+                        <div className="bg-[#1B4332] text-[#F8F9FA]">
+                            <header className="fixed top-0 w-full z-50 p-8 text-2xl font-serif italic mix-blend-difference">Archive List</header>
+                            <main>
+                                {VIDEOS.map((v, i) => (
+                                    <section key={v.id} className="min-h-screen flex items-center justify-center sticky top-0" style={{ backgroundColor: i % 2 === 0 ? '#1B4332' : '#D9480F' }}>
+                                        <div className="max-w-6xl w-full px-12 grid lg:grid-cols-2 gap-16 items-center">
+                                            <div className="order-2 lg:order-1">
+                                                <h2 className="text-6xl font-serif italic mb-6 leading-tight">{v.title}</h2>
+                                                <button onClick={() => setPlayingVideo(v)} className="px-8 py-4 rounded-full border border-white hover:bg-white hover:text-black transition-all font-bold uppercase text-xs tracking-widest">Watch Now</button>
+                                            </div>
+                                            <div className="order-1 lg:order-2 rounded-2xl shadow-3xl overflow-hidden aspect-video relative group cursor-pointer" onClick={() => setPlayingVideo(v)}>
+                                                <img src={v.thumbnail} className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="Play" size={64} /></div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                ))}
+                            </main>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
